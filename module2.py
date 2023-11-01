@@ -1,11 +1,13 @@
 # D:\Python\myProject\parser_baza-knig\module2.py
-
+import mimetypes
 import time
 import random
 import os
 import json
 import requests
 from bs4 import BeautifulSoup
+import datetime
+from transliterate import translit  # Убедитесь, что у вас установлен модуль transliterate
 
 from module1 import URL, HEADERS
 
@@ -55,6 +57,22 @@ def parser_page(dict_page, URL = URL, HEADERS = HEADERS):
                 response = requests.get(img_src, headers=HEADERS)
                 response.raise_for_status()
 
+                # Получим исходное расширение изображения
+                content_type = response.headers.get('content-type')
+                if content_type:
+                    ext = mimetypes.guess_extension(content_type)
+                    if ext:
+                        ext = ext.lstrip('.')
+                    else:
+                        ext = "jpg"
+                else:
+                    ext = "jpg"
+
+                # Вызываем функцию для переименования изображения
+                img_filename = rename_and_save_image(response.content, dict_page['title'], ext)
+
+                # Сохранение изображения
+                img_save_path = os.path.join("img_downloads", img_filename)
                 with open(img_save_path, "wb") as img_file:
                     img_file.write(response.content)
 
@@ -74,6 +92,20 @@ def parser_page(dict_page, URL = URL, HEADERS = HEADERS):
         print("URL страницы отсутствует в словаре.")
 
 
+def rename_and_save_image(img_url, title, ext):
+    # Транслитерация кириллического текста в латиницу
+    latin_title = translit(title, reversed=True)
+
+    # Получение текущей даты в формате "MMDD"
+    current_date = datetime.datetime.now().strftime("%m%d")
+
+    # Формирование имени файла изображения
+    img_filename = f"{latin_title}_{current_date}.{ext}"
+
+    return img_filename
+
+
+
 # Эта функция будет добавлена позже
 def save_to_json(data, file_path):
     pass
@@ -85,8 +117,8 @@ def main():
     file_path = 'book_database.json'
 
     # опредилим предварительные по погинации страницы для парсинга
-    n = 5047
-    x = 5047
+    n = 5049
+    x = 5049
 
     # Вызовим функцию для загрузки данных из JSON
     data = load_data_from_json(file_path, n, x)
