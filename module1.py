@@ -1,3 +1,5 @@
+# D:\Python\myProject\parser_baza-knig\module1.py
+
 import time
 import random
 import os

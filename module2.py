@@ -24,6 +24,31 @@ def load_data_from_json(file_path, n, x):
     return filtered_data
 
 
+# Определите новую функцию parser_description
+def parser_description(soup):
+
+    data = {}
+
+    # Извлекаем данные из <ul> с классом "full-items"
+    ul_tag = soup.find('ul', class_='full-items')
+    if ul_tag:
+        list_items = ul_tag.find_all('li')
+
+        for item in list_items:
+            text = item.get_text(strip=True)
+            key, value = text.split(':', 1)
+            key = key.strip().lower().replace(' ', '_')
+            value = value.strip()
+            data[key] = value
+
+    # Извлекаем текст из <div> с классом "short-text"
+    div_short_text = soup.find('div', class_='short-text')
+    if div_short_text:
+        description = div_short_text.get_text()
+        data['description'] = description
+
+    return data
+
 
 def parser_page(dict_page, URL = URL, HEADERS = HEADERS):
     # Извлекаем URL страницы из словаря
@@ -37,6 +62,9 @@ def parser_page(dict_page, URL = URL, HEADERS = HEADERS):
 
             # Создаем объект BeautifulSoup для парсинга страницы
             soup = BeautifulSoup(response.text, "html.parser")
+
+            # Вызываем parser_description для извлечения данных
+            description_data = parser_description(soup)
 
             # Извлекаем URL картинки
             img_element = soup.find("div", class_="full-img").find("img")
@@ -78,7 +106,7 @@ def parser_page(dict_page, URL = URL, HEADERS = HEADERS):
                     img_file.write(response.content)
 
                 # Обновляем словарь dict_page_new
-                dict_page_new = dict(dict_page)
+                dict_page_new = dict(dict_page, **description_data)
                 dict_page_new["image_file"] = img_filename
 
                 # Вызываем функцию для сохранения данных в JSON
@@ -118,9 +146,23 @@ def rename_and_save_image(title, ext):
     return img_filename
 
 
-# Эта функция будет добавлена позже
+# Эта функция создает JSON-файл и добавляет данные в 'book_database2.json'
 def save_to_json(data, file_path):
-    pass
+    # Проверяем существование файла
+    if os.path.exists(file_path):
+        # Если файл существует, загружаем его содержимое
+        with open(file_path, 'r', encoding='utf-8') as file:
+            existing_data = json.load(file)
+    else:
+        # Если файла нет, создаем пустой список
+        existing_data = []
+
+    # Добавляем новые данные к существующим данным
+    existing_data.append(data)
+
+    # Сохраняем обновленные данные в файл
+    with open(file_path, 'w', encoding='utf-8') as file:
+        json.dump(existing_data, file, ensure_ascii=False, indent=4)
 
 
 # Функция main
