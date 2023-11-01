@@ -1,101 +1,114 @@
+# D:\Python\myProject\parser_baza-knig\module2.py
+
+import time
+import random
 import os
 import json
 import requests
 from bs4 import BeautifulSoup
 
-# Функция для скачивания картинок и сохранения ссылки в JSON
-def download_and_save_image(image_url, image_filename):
-    image_directory = "img"
-    if not os.path.exists(image_directory):
-        os.makedirs(image_directory)
-
-    image_path = os.path.join(image_directory, image_filename)
-
-    response = requests.get(image_url)
-
-    if response.status_code == 200:
-        with open(image_path, 'wb') as file:
-            file.write(response.content)
-        return image_path
-    else:
-        print(f"Не удалось скачать изображение: {image_url}")
-        return None
+from module1 import URL, HEADERS
 
 
-def download_image(image_url, product_link):
-    # Получаем последний слаг из ссылки на продукт
-    product_slug = product_link.rstrip('/').split('/')[-1]
-
-    # Определяем путь для сохранения изображения
-    image_path = os.path.join('img', f"{product_slug}.jpg")
-
-    # Скачиваем изображение
-    response = requests.get(image_url, stream=True)
-    with open(image_path, 'wb') as file:
-        for chunk in response.iter_content(chunk_size=8192):
-            file.write(chunk)
-
-    return image_path
-
-
-# Загрузка данных из первого этапа парсинга (book_database.json)
-with open('book_database.json', 'r', encoding='utf-8') as file:
-    data = json.load(file)
-
-# Парсим страницы книг
-for item in data:
-    url = item['link']
-
-    # В переменную сохраним юзер-агент, что-бы браузер не считал наши обращения как действия бота
-    HEADERS = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36'
-    }
-
-    response = requests.get(url, headers=HEADERS)
-    soup = BeautifulSoup(response.content, 'html.parser')
-    text = soup.find('div', class_='short-text')
-
-    # Получим описание книги
-    if text:
-        description = text.get_text(strip=True)
-        item['description'] = description
-    else:
-        item['description'] = 'Описание не найдено'
-
-    # Получаем адрес картинки, качаем ее и заносим данные в элементы для дальнейшей записи в 'book_database.json'
-    full_img_elem = soup.find('div', class_='full-img')
-    if full_img_elem:
-        image_url = item['URL'] + full_img_elem.find('img')['src']
-        image_filename = image_url.split('/')[-1]
-        image_path = download_and_save_image(image_url, image_filename)
-        item['image_url'] = image_url
-        item['image_path'] = image_path
-    else:
-        item['image_url'] = 'Картинка не найдена'
-        item['image_path'] = None
-
-# Обновление JSON-файла с новой информацией
-with open('book_database.json', 'w', encoding='utf-8') as file:
-    json.dump(data, file, ensure_ascii=False, indent=4)
-
-
-def main():
-    with open('book_database.json', 'r', encoding='utf-8') as file:
+# Функция для загрузки данных из JSON
+def load_data_from_json(file_path, n, x):
+    with open(file_path, 'r', encoding='utf-8') as file:
         data = json.load(file)
 
-    for product in data:
-        product_link = product['link']
-        image_url = product['image_url']
+    # Отфильтруем словари, оставив только те, где "page" в диапазоне от n до x
+    filtered_data = [item for item in data if n >= item['page'] >= x]
 
-        # Переименовываем изображение и получаем его новый путь
-        new_image_path = download_image(image_url, product_link)
+    return filtered_data
 
-        # Обновляем информацию в словаре продукта
-        product['image_path'] = new_image_path
 
-    # Обновляем JSON-файл
-    with open('book_database.json', 'w', encoding='utf-8') as file:
-        json.dump(data, file, ensure_ascii=False, indent=4)
+
+def parser_page(dict_page, URL = URL, HEADERS = HEADERS):
+    # Извлекаем URL страницы из словаря
+    page_url = dict_page.get("link")
+
+    if page_url:
+        try:
+            # Делаем GET-запрос к странице
+            response = requests.get(page_url, headers=HEADERS)
+            response.raise_for_status()  # Проверяем успешность запроса
+
+            # Создаем объект BeautifulSoup для парсинга страницы
+            soup = BeautifulSoup(response.text, "html.parser")
+
+            # Извлекаем URL картинки
+            img_element = soup.find("div", class_="full-img").find("img")
+            img_src = img_element.get("src")
+
+            if img_src:
+                # Добавляем префикс URL сайта, если необходимо
+                if not img_src.startswith("http"):
+                    img_src = f"{URL}/{img_src}"
+
+                # Получаем имя файла из URL
+                img_filename = os.path.basename(img_src)
+                img_save_path = os.path.join("img_downloads", img_filename)
+
+                # Создаем директорию, если она не существует
+                os.makedirs("img_downloads", exist_ok=True)
+
+                # Скачиваем и сохраняем изображение
+                response = requests.get(img_src, headers=HEADERS)
+                response.raise_for_status()
+
+                with open(img_save_path, "wb") as img_file:
+                    img_file.write(response.content)
+
+                # Обновляем словарь dict_page_new
+                dict_page_new = dict(dict_page)
+                dict_page_new["image_file"] = img_filename
+
+                # Вызываем функцию для сохранения данных в JSON
+                save_to_json(dict_page_new, "book_database2.json")
+
+            else:
+                print("Изображение не найдено на странице.")
+
+        except Exception as e:
+            print(f"Ошибка при парсинге страницы {page_url}: {e}")
+    else:
+        print("URL страницы отсутствует в словаре.")
+
+
+# Эта функция будет добавлена позже
+def save_to_json(data, file_path):
+    pass
+
+
+# Функция main
+def main():
+    # Опредилим путь к '*.json'
+    file_path = 'book_database.json'
+
+    # опредилим предварительные по погинации страницы для парсинга
+    n = 5047
+    x = 5047
+
+    # Вызовим функцию для загрузки данных из JSON
+    data = load_data_from_json(file_path, n, x)
+
+    # Запустим цикл по словарям
+    for dict_page in data:
+        print(f"Парсинг страницы: {dict_page['title']}")
+
+        # Засекаем начало времени
+        start_time = time.time()
+
+        parser_page(dict_page)
+
+        # Засекаем конец времени и рассчитываем время
+        end_time = time.time()
+        elapsed_time = end_time - start_time
+
+        print(f"Время парсинга: {elapsed_time:.2f} сек")
+        t = random.randint(1, 3)
+        print(f'Задержка {t} seconds')
+        time.sleep(t)
+
 
 if __name__ == "__main__":
     main()

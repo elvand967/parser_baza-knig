@@ -1,83 +1,70 @@
-# D:\Python\myProject\parser_baza-knig\module1.py
-
-# pip install requests
-import requests
-# pip install requests bs4
-from bs4 import BeautifulSoup
+import time
+import random
+import os
 import json
+import requests
+from bs4 import BeautifulSoup
+
+URL = 'https://baza-knig.ink/'
+HEADERS = {
+    'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36'
+}
 
 
-# Вместо функции save используем функцию для сохранения в JSON
+# Функция для сохранения в JSON
 def save_to_json(comps, filename):
     with open(filename, 'w', encoding='utf-8') as file:
         json.dump(comps, file, ensure_ascii=False, indent=4)
 
-# # функция заменена на def save_to_json(comps, filename), для сохранения
-# def save(comps):
-#     with open('book_database.txt', 'a') as file:
-#         for comp in comps:
-#             file.write(f"Книга: {comp['title']}\n")
-#             file.write(f"Автор: {comp['author']}\n")
-#             file.write(f"Читает: {comp['read_book']}\n")
-#             file.write(f"Длительность: {comp['duration']}\n")
-#             file.write(f"Цикл: {comp['cycle']}\n")
-#             file.write(f"Жанр: {comp['genre']}\n")
-#             file.write(f"Ссылка: {comp['link']}\n")
-#             file.write(f"\n")
+def get_element_safe(soup, selector, index):
+    elements = soup.select(selector)
+    return elements[index].get_text(strip=True) if elements and len(elements) > index else 'Не найдено'
 
+def parser(URL = URL, HEADERS = HEADERS):
 
-def parser():
-    # Создадим переменную в которой будем хранить адрес сайта, который хотим парсить
-    URL = 'https://baza-knig.ink/'
+    page = 5049
+    filename = 'book_database_test.json'
 
-    # В переменную сохраним юзер-агент, что-бы браузер не считал наши обращения как действия бота
-    HEADERS = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36'
-    }
+    if os.path.exists(filename):
+        with open(filename, 'r', encoding='utf-8') as file:
+            comps = json.load(file)
+    else:
+        comps = []
 
-    page = 5045
-    while page > 5044:
+    while page:
         URLpage = URL + '/page/' + str(page)
-
-        # отправим запрос на сервер
         response = requests.get(URLpage, headers=HEADERS)
         soup = BeautifulSoup(response.content, 'html.parser')
         items = soup.findAll('div', class_='short')
-        comps = []
 
         for item in items:
-            author_elem = item.find('ul', class_='reset short-items').find_all('li')[0].find('a')
-            read_book_elem = item.find('ul', class_='reset short-items').find_all('li')[1].find('a')
-            duration_elem = item.find('ul', class_='reset short-items').find_all('li')[2].find('b')
-            cycle_elem = item.find('ul', class_='reset short-items').find_all('li')[3].find('a')
-
-            genre_elems = item.find('ul', class_='reset short-items').find_all('li')[4].find_all('a') if len(
-                item.find('ul', class_='reset short-items').find_all('li')) > 4 else []
+            author_elem = get_element_safe(item, 'ul.reset.short-items li a', 0)
+            read_book_elem = get_element_safe(item, 'ul.reset.short-items li a', 1)
+            duration_elem = get_element_safe(item, 'ul.reset.short-items li b', 0)
+            cycle_elem = get_element_safe(item, 'ul.reset.short-items li a', 2)
+            genre_elems = item.select('ul.reset.short-items li a')[3:]
 
             comps.append({
+                'page': page,
                 'title': item.find('div', class_='short-title').get_text(strip=True),
-                'author': author_elem.get_text(strip=True) if author_elem else 'Не найдено',
-                'read_book': read_book_elem.get_text(strip=True) if read_book_elem else 'Не найдено',
-                'duration': duration_elem.get_text(strip=True) if duration_elem else 'Не найдено',
-                'cycle': cycle_elem.get_text(strip=True) if cycle_elem else 'Не найдено',
-                'genre': ', '.join(
-                    [genre.get_text(strip=True) for genre in genre_elems]) if genre_elems else 'Не найдено',
+                'author': author_elem,
+                'read_book': read_book_elem,
+                'duration': duration_elem,
+                'cycle': cycle_elem,
+                'genre': ', '.join([genre.get_text(strip=True) for genre in genre_elems]) if genre_elems else 'Не найдено',
                 'link': item.find('div', class_='short-title').find('a').get('href'),
-                'URL': URL,  # Домашняя страница сайта
+                'URL': URL,
             })
 
-        for comp in comps:
-            print(f"Книга: {comp['title']}\nАвтор: {comp['author']}\nЧитает: {comp['read_book']}\n"
-                  f"Длительность: {comp['duration']}\nЦикл: {comp['cycle']}\n"
-                  f"Жанр: {comp['genre']}\nСсылка: {comp['link']}\n")
+        print(f"Страница: {page}")
 
-        # save(comps)
+        save_to_json(comps, filename)
 
-        # Сохраняем список ссылок в JSON файл
-        save_to_json(comps, 'book_database.json')
+        t = random.randint(1, 3)
+        print(f'Задержка {t} seconds')
+        time.sleep(t)
 
         page = page - 1
-
 
 if __name__ == "__main__":
     parser()
