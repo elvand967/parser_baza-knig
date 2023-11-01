@@ -3,6 +3,7 @@ import mimetypes
 import time
 import random
 import os
+import re
 import json
 import requests
 from bs4 import BeautifulSoup
@@ -69,7 +70,7 @@ def parser_page(dict_page, URL = URL, HEADERS = HEADERS):
                     ext = "jpg"
 
                 # Вызываем функцию для переименования изображения
-                img_filename = rename_and_save_image(response.content, dict_page['title'], ext)
+                img_filename = rename_and_save_image(dict_page['title'], ext)
 
                 # Сохранение изображения
                 img_save_path = os.path.join("img_downloads", img_filename)
@@ -92,9 +93,18 @@ def parser_page(dict_page, URL = URL, HEADERS = HEADERS):
         print("URL страницы отсутствует в словаре.")
 
 
-def rename_and_save_image(img_url, title, ext):
-    # Транслитерация кириллического текста в латиницу
-    latin_title = translit(title, reversed=True)
+def rename_and_save_image(title, ext):
+
+    # Замена пробелов и недопустимых символов на нижнее подчеркивание
+    character_control = re.sub(r'[^\w\s-]', '_', title)  # Заменяем пробелы, символы исключая буквы, цифры, дефис и подчеркивание
+
+    # Проверяем, есть ли хотя бы одна буква
+    if any(c.isalpha() for c in character_control):
+        # Если есть буквы, транслируем
+        latin_title = translit(character_control, reversed=True)
+    else:
+        # Если нет букв, просто добавляем префикс "f_"
+        latin_title = f"f_{character_control}"
 
     # Получение текущей даты в формате "MMDD"
     current_date = datetime.datetime.now().strftime("%m%d")
@@ -103,7 +113,6 @@ def rename_and_save_image(img_url, title, ext):
     img_filename = f"{latin_title}_{current_date}.{ext}"
 
     return img_filename
-
 
 
 # Эта функция будет добавлена позже
