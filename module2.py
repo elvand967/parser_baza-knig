@@ -96,7 +96,7 @@ def parser_page(dict_page, URL = URL, HEADERS = HEADERS):
 def rename_and_save_image(title, ext):
 
     # Замена пробелов и недопустимых символов на нижнее подчеркивание
-    character_control = re.sub(r'[^\w\s-]', '_', title)  # Заменяем пробелы, символы исключая буквы, цифры, дефис и подчеркивание
+    character_control = re.sub(r'[^\w-]', '_', title)  # Заменяем пробелы, символы исключая буквы, цифры, дефис и подчеркивание
 
     # Проверяем, есть ли хотя бы одна буква
     if any(c.isalpha() for c in character_control):
@@ -106,11 +106,14 @@ def rename_and_save_image(title, ext):
         # Если нет букв, просто добавляем префикс "f_"
         latin_title = f"f_{character_control}"
 
-    # Получение текущей даты в формате "MMDD"
-    current_date = datetime.datetime.now().strftime("%m%d")
+    # Заменяем пробелы на нижнее подчеркивание
+    sanitized_title = re.sub(r'[\s]+', '_', latin_title)
+
+    # Получение текущей даты в формате "MMDDSS"
+    current_date = datetime.datetime.now().strftime("%m%d%S")
 
     # Формирование имени файла изображения
-    img_filename = f"{latin_title}_{current_date}.{ext}"
+    img_filename = f"{sanitized_title}_{current_date}.{ext}"
 
     return img_filename
 
