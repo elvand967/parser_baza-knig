@@ -8,8 +8,17 @@ import json
 import requests
 from bs4 import BeautifulSoup
 import datetime
-from transliterate import translit  # Убедитесь, что у вас установлен модуль transliterate
 
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.support.ui import WebDriverWait
+import shutil
+
+
+from selenium.webdriver.firefox import webdriver
+
+from transliterate import translit
 from module1 import URL, HEADERS
 
 
@@ -64,6 +73,70 @@ def parser_description(soup):
 
     return data
 
+
+
+from selenium import webdriver
+from selenium.webdriver.common.by import By
+from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.support.ui import WebDriverWait
+
+def download_torrent_file(url):
+    # Используем Firefox для скачивания торрент-файла
+    driver = webdriver.Firefox()
+
+    driver.get(url)  # Открываем страницу
+    # Проверяем наличие ссылки на торрент
+    if driver.find_elements(By.CSS_SELECTOR,
+                            "a[onclick=\"yaCounter46924785.reachGoal('clickTorrent'); return true;\"]"):
+        torrent_link_url = driver.find_element(By.CSS_SELECTOR,
+                                               "a[onclick=\"yaCounter46924785.reachGoal('clickTorrent'); return true;\"]")
+
+        # Кликаем по ссылке торрента
+        torrent_link_url.click()
+
+        wait = WebDriverWait(driver, 600)  # Увеличиваем время ожидания
+        download_folder = "D:\\User\\Downloads"  # Путь к папке downloads
+
+        # Дождемся загрузки файла и получим его имя
+        try:
+            wait.until(lambda x: not any(filename.endswith('.crdownload') for filename in os.listdir(download_folder)))
+        except TimeoutException:
+            print("Торрент-файл загрузился не полностью.")
+            driver.quit()
+            return "Нет"
+
+        # Извлекаем имя файла из заголовка Content-Disposition
+        headers = driver.execute_script("return document.getElementsByTagName('a')[0].href;")
+        response = requests.head(headers, allow_redirects=True)
+        if 'content-disposition' in response.headers:
+            content_disposition = response.headers['content-disposition']
+            filename = content_disposition.split("filename=")[1].strip('"')
+            print(f"Имя загруженного файла: {filename}")
+        else:
+            print("Имя файла не найдено в заголовке Content-Disposition")
+            filename = "Unknown.torrent"
+
+        # # Перемещаем загруженный файл в нужную папку
+        # src_file = os.path.join(download_folder, filename)
+        # dest_file = os.path.join('downloads_torrent', filename)
+        # shutil.move(src_file, dest_file)
+
+    else:
+        print(f"Торрент не найден на странице")
+        driver.quit()
+        return "Нет"
+
+    # Закрываем браузер после скачивания
+    driver.quit()
+
+    return filename
+
+
+
+
+
+
+
 def parser_page(dict_page, URL = URL, HEADERS = HEADERS):
     # Извлекаем URL страницы из словаря
     page_url = dict_page.get("link")
@@ -79,6 +152,9 @@ def parser_page(dict_page, URL = URL, HEADERS = HEADERS):
 
             # Вызываем parser_description для извлечения данных
             description_data = parser_description(soup)
+
+            # Вызываем download_torrent_file для сохранения торрент-файла
+            torrent_file = download_torrent_file(page_url)
 
             # Извлекаем URL картинки
             img_element = soup.find("div", class_="full-img").find("img")
@@ -122,6 +198,7 @@ def parser_page(dict_page, URL = URL, HEADERS = HEADERS):
                 # Обновляем словарь dict_page_new
                 dict_page_new = dict(dict_page, **description_data)
                 dict_page_new["image_file"] = img_filename
+                dict_page_new["torrent"] = torrent_file
 
                 # Вызываем функцию для сохранения данных в JSON
                 save_to_json(dict_page_new, "book_database2.json")
@@ -192,8 +269,8 @@ def main():
     file_path = 'book_database.json'
 
     # опредилим предварительные по погинации страницы для парсинга
-    n = 120
-    x = 160
+    n = 1
+    x = 10
     # Вызовим функцию для загрузки данных из JSON
     data = load_data_from_json(file_path, n, x)
 
