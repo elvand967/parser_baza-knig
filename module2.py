@@ -18,8 +18,8 @@ def load_data_from_json(file_path, n, x):
     with open(file_path, 'r', encoding='utf-8') as file:
         data = json.load(file)
 
-    # Отфильтруем словари, оставив только те, где "page" в диапазоне от n до x
-    filtered_data = [item for item in data if n >= item['page'] >= x]
+    # Отфильтруем словари, оставив только те, где "id" в диапазоне от n до x
+    filtered_data = [item for item in data if x >= item['id'] >= n]
 
     return filtered_data
 
@@ -37,7 +37,11 @@ def parser_description(soup):
         for item in list_items:
             text = item.get_text(strip=True)
             key, value = text.split(':', 1)
-            key = key.strip().lower().replace(' ', '_')
+
+            # Транслитерация ключа
+            key = translit(key.strip(), reversed=True)
+            key = key.lower().replace(' ', '_')
+
             value = value.strip()
             data[key] = value
 
@@ -45,10 +49,20 @@ def parser_description(soup):
     div_short_text = soup.find('div', class_='short-text')
     if div_short_text:
         description = div_short_text.get_text()
+
+        # Редактируем описание с помощью регулярных выражений import re
+        # Удаление всего, начиная с первого символа "\n" и после
+        description = re.sub(r'\n.*', '', description)
+
+        # Удаление всего до "прочти описание:", включая саму фразу.
+        description = re.sub(r'^.*?прочти описание:', '', description, flags=re.DOTALL)
+
+        # Удаление пробельных символов и символа перевода строки в начале и конце
+        description = description.strip()
+
         data['description'] = description
 
     return data
-
 
 def parser_page(dict_page, URL = URL, HEADERS = HEADERS):
     # Извлекаем URL страницы из словаря
@@ -164,6 +178,13 @@ def save_to_json(data, file_path):
     with open(file_path, 'w', encoding='utf-8') as file:
         json.dump(existing_data, file, ensure_ascii=False, indent=4)
 
+# функция format_time преобразует количество секунд в формат "hh:mm:ss"
+def format_time(seconds):
+    hours, remainder = divmod(seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    return f"{int(hours):02d}:{int(minutes):02d}:{int(seconds):02d}"
+
+
 
 # Функция main
 def main():
@@ -171,15 +192,17 @@ def main():
     file_path = 'book_database.json'
 
     # опредилим предварительные по погинации страницы для парсинга
-    n = 5049
-    x = 5049
-
+    n = 120
+    x = 160
     # Вызовим функцию для загрузки данных из JSON
     data = load_data_from_json(file_path, n, x)
 
+    # Засекаем начало времени работы кода
+    start_time_pars = time.time()
+
     # Запустим цикл по словарям
     for dict_page in data:
-        print(f"Парсинг страницы: {dict_page['title']}")
+        print(f"\nid: {dict_page['id']}\nПарсинг страницы: {dict_page['title']}")
 
         # Засекаем начало времени
         start_time = time.time()
@@ -190,11 +213,16 @@ def main():
         end_time = time.time()
         elapsed_time = end_time - start_time
 
-        print(f"Время парсинга: {elapsed_time:.2f} сек")
+        print(f"Время парсинга страницы: {elapsed_time:.2f} сек")
         t = random.randint(1, 3)
         print(f'Задержка {t} seconds')
         time.sleep(t)
 
+    end_time_pars = time.time()
+    elapsed_time_pars = end_time_pars - start_time_pars
+    # print(f"\nВсего затрачено время на парсинг: {elapsed_time_pars:.2f} сек")
+    elapsed_time_formatted = format_time(elapsed_time_pars)
+    print(f"\nВсего затрачено время на парсинг: {elapsed_time_formatted}")
 
 if __name__ == "__main__":
     main()
