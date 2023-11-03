@@ -18,9 +18,11 @@ def save_to_json(comps, filename):
     with open(filename, 'w', encoding='utf-8') as file:
         json.dump(comps, file, ensure_ascii=False, indent=4)
 
+
 def get_element_safe(soup, selector, index):
     elements = soup.select(selector)
     return elements[index].get_text(strip=True) if elements and len(elements) > index else 'Не найдено'
+
 
 def parser(URL = URL, HEADERS = HEADERS):
 

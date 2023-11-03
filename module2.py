@@ -13,10 +13,6 @@ from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.support.ui import WebDriverWait
-import shutil
-
-
-from selenium.webdriver.firefox import webdriver
 
 from transliterate import translit
 from module1 import URL, HEADERS
@@ -74,15 +70,14 @@ def parser_description(soup):
     return data
 
 
-
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.common.exceptions import TimeoutException
-from selenium.webdriver.support.ui import WebDriverWait
-
 def download_torrent_file(url):
     # Используем Firefox для скачивания торрент-файла
     driver = webdriver.Firefox()
+
+    download_folder = "D:\\User\\Downloads"  # Путь к папке downloads
+
+    # Получаем список файлов до скачивания
+    filenames_old = set(os.listdir(download_folder))
 
     driver.get(url)  # Открываем страницу
     # Проверяем наличие ссылки на торрент
@@ -95,46 +90,30 @@ def download_torrent_file(url):
         torrent_link_url.click()
 
         wait = WebDriverWait(driver, 600)  # Увеличиваем время ожидания
-        download_folder = "D:\\User\\Downloads"  # Путь к папке downloads
 
-        # Дождемся загрузки файла и получим его имя
+        # Дождемся загрузки файла
         try:
-            wait.until(lambda x: not any(filename.endswith('.crdownload') for filename in os.listdir(download_folder)))
+            wait.until(lambda x: any(filename.endswith('.torrent') for filename in os.listdir(download_folder)))
         except TimeoutException:
-            print("Торрент-файл загрузился не полностью.")
+            print("Торрент-файл не загружен.")
             driver.quit()
             return "Нет"
 
-        # Извлекаем имя файла из заголовка Content-Disposition
-        headers = driver.execute_script("return document.getElementsByTagName('a')[0].href;")
-        response = requests.head(headers, allow_redirects=True)
-        if 'content-disposition' in response.headers:
-            content_disposition = response.headers['content-disposition']
-            filename = content_disposition.split("filename=")[1].strip('"')
-            print(f"Имя загруженного файла: {filename}")
-        else:
-            print("Имя файла не найдено в заголовке Content-Disposition")
-            filename = "Unknown.torrent"
+        # Получаем список файлов после скачивания
+        filenames_new = set(os.listdir(download_folder))
 
-        # # Перемещаем загруженный файл в нужную папку
-        # src_file = os.path.join(download_folder, filename)
-        # dest_file = os.path.join('downloads_torrent', filename)
-        # shutil.move(src_file, dest_file)
+        # Находим имя нового файла
+        downloaded_file = (filenames_new - filenames_old).pop()
+
+        # Закрываем браузер после скачивания
+        driver.quit()
+
+        return downloaded_file
 
     else:
         print(f"Торрент не найден на странице")
         driver.quit()
         return "Нет"
-
-    # Закрываем браузер после скачивания
-    driver.quit()
-
-    return filename
-
-
-
-
-
 
 
 def parser_page(dict_page, URL = URL, HEADERS = HEADERS):
@@ -269,8 +248,8 @@ def main():
     file_path = 'book_database.json'
 
     # опредилим предварительные по погинации страницы для парсинга
-    n = 1
-    x = 10
+    n = 36
+    x = 40
     # Вызовим функцию для загрузки данных из JSON
     data = load_data_from_json(file_path, n, x)
 
