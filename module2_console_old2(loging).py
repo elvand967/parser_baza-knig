@@ -1,5 +1,6 @@
 # D:\Python\myProject\parser_baza-knig\module2.py
 import mimetypes
+import sys
 import time
 import random
 import os
@@ -8,6 +9,7 @@ import json
 import requests
 from bs4 import BeautifulSoup
 import datetime
+import logging
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
@@ -16,7 +18,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 from transliterate import translit
 from module1 import URL, HEADERS
-import sys  # Импортируем модуль sys для работы с аргументами командной строки
+
 
 # Функция для загрузки данных из JSON
 def load_data_from_json(file_path, n, x):
@@ -153,7 +155,7 @@ def parser_page(dict_page, URL = URL, HEADERS = HEADERS):
                 img_filename = os.path.basename(img_src)
                 img_save_path = os.path.join("img_downloads", img_filename)
 
-                # Создаем директорию, если она не существует D:\Python\myProject\parser_baza-knig\img_downloads
+                # Создаем директорию, если она не существует
                 # os.makedirs("img_downloads", exist_ok=True)
                 os.makedirs("D:\Python\myProject\parser_baza-knig\img_downloads", exist_ok=True)
 
@@ -187,8 +189,7 @@ def parser_page(dict_page, URL = URL, HEADERS = HEADERS):
                 dict_page_new["torrent"] = torrent_file
 
                 # Вызываем функцию для сохранения данных в JSON
-                # save_to_json(dict_page_new, "book_database2.json")
-                save_to_json(dict_page_new, "D:\Python\myProject\parser_baza-knig\\book_database2.json.json")
+                save_to_json(dict_page_new, "D:\Python\myProject\parser_baza-knig\\book_database2.json")
 
             else:
                 print("Изображение не найдено на странице.")
@@ -242,7 +243,6 @@ def save_to_json(data, file_path):
     with open(file_path, 'w', encoding='utf-8') as file:
         json.dump(existing_data, file, ensure_ascii=False, indent=4)
 
-
 # функция format_time преобразует количество секунд в формат "hh:mm:ss"
 def format_time(seconds):
     hours, remainder = divmod(seconds, 3600)
@@ -250,21 +250,33 @@ def format_time(seconds):
     return f"{int(hours):02d}:{int(minutes):02d}:{int(seconds):02d}"
 
 
+
 # Функция main принимает список словарей с данными, в том числе url страниц, парсинг которых нужно произвести
 def main(n, x):
-    # Определим путь к '*.json'
-    # file_path = 'book_database.json'
+    # Генерируем уникальное имя для лог-файла
+    current_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    log_filename = f"D:\Python\myProject\parser_baza-knig\log_{current_time}_n{n}_x{x}.txt"
+
+    # Настройка логгера
+    logging.basicConfig(filename=log_filename, level=logging.INFO, format="%(asctime)s - %(message)s")
+
+    # Открываем лог-файл для записи
+    logging.info(f"Лог-файл для n={n} и x={x}")
+
+    # Определяем путь к исходному '*.json'
     file_path = 'D:\Python\myProject\parser_baza-knig\\book_database.json'
 
-    # Вызовим функцию для загрузки данных из JSON
+    # Вызываем функцию для загрузки данных из JSON
     data = load_data_from_json(file_path, n, x)
+
+    logging.info("Загружены данные из JSON.")
 
     # Засекаем начало времени работы кода
     start_time_pars = time.time()
 
-    # Запустим цикл по словарям
+    # Запускаем цикл по словарям
     for dict_page in data:
-        print(f"\nid: {dict_page['id']}\nПарсинг страницы: {dict_page['title']}")
+        logging.info(f"\nid: {dict_page['id']}\nПарсинг страницы: {dict_page['title']}")
 
         # Засекаем начало времени
         start_time = time.time()
@@ -275,23 +287,31 @@ def main(n, x):
         end_time = time.time()
         elapsed_time = end_time - start_time
 
-        print(f"Время парсинга страницы: {elapsed_time:.2f} сек")
+        logging.info(f"Время парсинга страницы: {elapsed_time:.2f} сек")
         t = random.randint(1, 3)
-        print(f'Задержка {t} seconds')
+        logging.info(f'Задержка {t} seconds')
+
         time.sleep(t)
 
     end_time_pars = time.time()
     elapsed_time_pars = end_time_pars - start_time_pars
-    # print(f"\nВсего затрачено время на парсинг: {elapsed_time_pars:.2f} сек")
     elapsed_time_formatted = format_time(elapsed_time_pars)
-    print(f"\nВсего затрачено время на парсинг: {elapsed_time_formatted}")
+
+    logging.info(f"\nВсего затрачено время на парсинг: {elapsed_time_formatted}")
 
 if __name__ == "__main__":
     # Проверим, переданы ли аргументы командной строки
-    if len(sys.argv) != 3:
-        print("Используйте: python module2.py <n> <x>")
-    else:
+    if len(sys.argv) == 3:
         # Получим значения n и x из аргументов командной строки
         n = int(sys.argv[1])
         x = int(sys.argv[2])
+        if x < n:
+            x = n
+        main(n, x)
+    else:
+        # Запросим аргументы n и x
+        n = int(input("№ id при старте: "))
+        x = int(input("№ id на финише: "))
+        if x < n:
+            x = n
         main(n, x)

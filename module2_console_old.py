@@ -1,5 +1,6 @@
 # D:\Python\myProject\parser_baza-knig\module2.py
 import mimetypes
+import sys
 import time
 import random
 import os
@@ -16,7 +17,7 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 from transliterate import translit
 from module1 import URL, HEADERS
-import sys  # Импортируем модуль sys для работы с аргументами командной строки
+
 
 # Функция для загрузки данных из JSON
 def load_data_from_json(file_path, n, x):
@@ -153,7 +154,7 @@ def parser_page(dict_page, URL = URL, HEADERS = HEADERS):
                 img_filename = os.path.basename(img_src)
                 img_save_path = os.path.join("img_downloads", img_filename)
 
-                # Создаем директорию, если она не существует D:\Python\myProject\parser_baza-knig\img_downloads
+                # Создаем директорию, если она не существует
                 # os.makedirs("img_downloads", exist_ok=True)
                 os.makedirs("D:\Python\myProject\parser_baza-knig\img_downloads", exist_ok=True)
 
@@ -187,8 +188,7 @@ def parser_page(dict_page, URL = URL, HEADERS = HEADERS):
                 dict_page_new["torrent"] = torrent_file
 
                 # Вызываем функцию для сохранения данных в JSON
-                # save_to_json(dict_page_new, "book_database2.json")
-                save_to_json(dict_page_new, "D:\Python\myProject\parser_baza-knig\\book_database2.json.json")
+                save_to_json(dict_page_new, "D:\Python\myProject\parser_baza-knig\\book_database2.json")
 
             else:
                 print("Изображение не найдено на странице.")
@@ -242,7 +242,6 @@ def save_to_json(data, file_path):
     with open(file_path, 'w', encoding='utf-8') as file:
         json.dump(existing_data, file, ensure_ascii=False, indent=4)
 
-
 # функция format_time преобразует количество секунд в формат "hh:mm:ss"
 def format_time(seconds):
     hours, remainder = divmod(seconds, 3600)
@@ -250,48 +249,85 @@ def format_time(seconds):
     return f"{int(hours):02d}:{int(minutes):02d}:{int(seconds):02d}"
 
 
+
 # Функция main принимает список словарей с данными, в том числе url страниц, парсинг которых нужно произвести
 def main(n, x):
-    # Определим путь к '*.json'
-    # file_path = 'book_database.json'
-    file_path = 'D:\Python\myProject\parser_baza-knig\\book_database.json'
+    # Генерируем уникальное имя для лог-файла
+    current_time = datetime.datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
+    log_filename = f"D:\Python\myProject\parser_baza-knig\id_n{n}_x{x}_module2_console.py_{current_time}_.log"
 
-    # Вызовим функцию для загрузки данных из JSON
-    data = load_data_from_json(file_path, n, x)
+    # Открываем лог-файл для записи
+    with open(log_filename, 'w') as log_file:
+        log_file.write(f"Лог-файл для n={n} и x={x}\n")
 
-    # Засекаем начало времени работы кода
-    start_time_pars = time.time()
+    # Переопределяем стандартный вывод для записи в лог-файл и вывода в терминал
+    original_stdout = sys.stdout
 
-    # Запустим цикл по словарям
-    for dict_page in data:
-        print(f"\nid: {dict_page['id']}\nПарсинг страницы: {dict_page['title']}")
+    with open(log_filename, 'a') as log_file:
+        sys.stdout = log_file  # Отправляем вывод в лог-файл
 
-        # Засекаем начало времени
-        start_time = time.time()
+        print("Лог-файл для n={n} и x={x}")
+        # sys.stdout.flush()
 
-        parser_page(dict_page)
+        # Опредилим путь к исходному '*.json'
+        # file_path = 'book_database.json'
+        file_path = 'D:\Python\myProject\parser_baza-knig\\book_database.json'
 
-        # Засекаем конец времени и рассчитываем время
-        end_time = time.time()
-        elapsed_time = end_time - start_time
+        # Вызовим функцию для загрузки данных из JSON
+        data = load_data_from_json(file_path, n, x)
 
-        print(f"Время парсинга страницы: {elapsed_time:.2f} сек")
-        t = random.randint(1, 3)
-        print(f'Задержка {t} seconds')
-        time.sleep(t)
+        print("Загружены данные из JSON.")
+        sys.stdout.flush()
 
-    end_time_pars = time.time()
-    elapsed_time_pars = end_time_pars - start_time_pars
-    # print(f"\nВсего затрачено время на парсинг: {elapsed_time_pars:.2f} сек")
-    elapsed_time_formatted = format_time(elapsed_time_pars)
-    print(f"\nВсего затрачено время на парсинг: {elapsed_time_formatted}")
+        # Засекаем начало времени работы кода
+        start_time_pars = time.time()
+
+        # Запустим цикл по словарям
+        for dict_page in data:
+            print(f"\nid: {dict_page['id']}\nПарсинг страницы: {dict_page['title']}\n")
+            sys.stdout.flush()
+
+            # Засекаем начало времени
+            start_time = time.time()
+
+            parser_page(dict_page)
+
+            # Засекаем конец времени и рассчитываем время
+            end_time = time.time()
+            elapsed_time = end_time - start_time
+
+            print(f"Время парсинга страницы: {elapsed_time:.2f} сек\n")
+            t = random.randint(1, 3)
+            print(f'Задержка {t} seconds\n')
+            sys.stdout.flush()
+
+            time.sleep(t)
+
+        end_time_pars = time.time()
+        elapsed_time_pars = end_time_pars - start_time_pars
+        elapsed_time_formatted = format_time(elapsed_time_pars)
+
+        print(f"\nВсего затрачено время на парсинг: {elapsed_time_formatted}\n")
+        sys.stdout.flush()
+
+    sys.stdout = original_stdout  # Восстанавливаем стандартный вывод
+    print("Завершено. Лог-файл:", log_filename)
+    sys.stdout.flush()
+
 
 if __name__ == "__main__":
     # Проверим, переданы ли аргументы командной строки
-    if len(sys.argv) != 3:
-        print("Используйте: python module2.py <n> <x>")
-    else:
+    if len(sys.argv) == 3:
         # Получим значения n и x из аргументов командной строки
         n = int(sys.argv[1])
         x = int(sys.argv[2])
+        if x < n:
+            x = n
+        main(n, x)
+    else:
+        # Запросим аргументы n и x
+        n = int(input("№ id при старте: "))
+        x = int(input("№ id на финише: "))
+        if x < n:
+            x = n
         main(n, x)
