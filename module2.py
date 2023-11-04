@@ -1,4 +1,6 @@
 # D:\Python\myProject\parser_baza-knig\module2.py
+
+
 import mimetypes
 import time
 import random
@@ -73,7 +75,10 @@ def parser_description(soup):
 def download_torrent_file(url):
     try:
         # Используем Firefox для скачивания торрент-файла
-        driver = webdriver.Firefox()
+        options = webdriver.FirefoxOptions()
+        options.headless = True
+
+        driver = webdriver.Firefox(options=options)
 
         download_folder = "D:\\User\\Downloads"  # Путь к папке downloads
 
@@ -288,10 +293,17 @@ def main(n, x):
 
 if __name__ == "__main__":
     # Проверим, переданы ли аргументы командной строки
-    if len(sys.argv) != 3:
-        print("Используйте: python module2.py <n> <x>")
-    else:
+    if len(sys.argv) == 3:
         # Получим значения n и x из аргументов командной строки
         n = int(sys.argv[1])
         x = int(sys.argv[2])
+        if x < n:
+            x = n
+        main(n, x)
+    else:
+        # Запросим аргументы n и x
+        n = int(input("№ id при старте: "))
+        x = int(input("№ id на финише: "))
+        if x < n:
+            x = n
         main(n, x)

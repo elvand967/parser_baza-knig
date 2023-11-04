@@ -74,7 +74,10 @@ def parser_description(soup):
 def download_torrent_file(url):
     try:
         # Используем Firefox для скачивания торрент-файла
-        driver = webdriver.Firefox()
+        options = webdriver.FirefoxOptions()
+        options.headless = True
+
+        driver = webdriver.Firefox(options=options)
 
         download_folder = "D:\\User\\Downloads"  # Путь к папке downloads
 
