@@ -23,7 +23,13 @@ import json
 import time
 from itertools import islice
 
-import pyautogui
+from selenium import webdriver
+
+from selenium.common.exceptions import TimeoutException
+from selenium.webdriver.common.by import By
+from selenium.webdriver.firefox.options import Options
+from selenium.webdriver.support.ui import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 
 def main(start_index, end_index):
@@ -73,16 +79,6 @@ def main(start_index, end_index):
 
 
 
-
-
-
-from selenium import webdriver
-from selenium.webdriver.common.by import By
-from selenium.webdriver.support.ui import WebDriverWait
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.common.exceptions import TimeoutException
-
-
 def download_torrent_file(url):
     try:
         download_folder = "D:\\User\\Downloads"  # Путь к папке downloads
@@ -90,13 +86,48 @@ def download_torrent_file(url):
         # Получаем список файлов до скачивания в общей папке загрузок браузеров
         filenames_old = set(os.listdir(download_folder))
 
-        # Используем Google Chrome для скачивания торрент-файла
-        driver = webdriver.Chrome()
+        # Используем Firefox для скачивания торрент-файла
+
+
+
+        # # Создайте экземпляр профиля Firefox с указанным путем
+        # firefox_profile = webdriver.FirefoxProfile('C:\\Users\\User\\AppData\\Local\\Mozilla\\Firefox\\Profiles\\c6y83n2e.elvand')
+        #
+        # # Создайте экземпляр браузера Firefox с этим профилем
+        # driver = webdriver.Firefox(firefox_profile=firefox_profile)
+
+        # Создайте экземпляр опций Firefox
+        options = Options()
+        options.headless = True
+        options.profile = 'C:\\Users\\User\\AppData\\Local\\Mozilla\\Firefox\\Profiles\\c6y83n2e.elvand'  # Укажите путь к профилю
+
+        # Создайте экземпляр браузера Firefox с этими опциями
+        driver = webdriver.Firefox(options=options)
+
+        # Устанавливаем размер окна (ширина x высота)
+        driver.set_window_size(360, 740)
 
         driver.get(url)  # Открываем страницу
 
+        # time.sleep(2)
+
         # Используем JavaScript для прокрутки страницы вниз до конца
         driver.execute_script("window.scrollTo(0, document.body.scrollHeight);")
+
+        # # Попробуем закрыть всплывающее окно, если оно есть
+        # try:
+        #     # Ожидаем появления кнопки "Закрыть"
+        #     wait = WebDriverWait(driver, 10)
+        #     close_button = wait.until(EC.presence_of_element_located((By.XPATH, '//div[@class="ns-hmw0n-e-15"]//span[text()="Закрыть"]')))
+        #
+        #     # Кликаем по кнопке "Закрыть"
+        #     close_button.click()
+        #
+        #     # Проверим, что кнопка "Закрыть" действительно исчезла
+        #     # wait.until(EC.staleness_of(close_button))
+        #
+        # except:
+        #     pass  # Если всплывающего окна нет или не удается его закрыть, продолжаем выполнение
 
         # Теперь можно продолжить скачивание торрент-файла
 
@@ -109,36 +140,31 @@ def download_torrent_file(url):
             # Кликаем по ссылке торрента
             torrent_link_url.click()
 
-            wait = WebDriverWait(driver, 60)  # Увеличиваем время ожидания
+            wait = WebDriverWait(driver, 600)  # Увеличиваем время ожидания
 
-            # Попробуем закрыть всплывающее окно, если оно есть
-            try:
-                # Ожидаем появления кнопки "Закрыть"
-                wait = WebDriverWait(driver, 10)
-                close_button = wait.until(
-                    EC.presence_of_element_located((By.XPATH, '//div[@class="ns-hmw0n-e-15"]//span[text()="Закрыть"]')))
+            # # Попробуем закрыть всплывающее окно, если оно есть
+            # try:
+            #     # Ожидаем появления кнопки "Закрыть"
+            #     wait = WebDriverWait(driver, 10)
+            #     close_button = wait.until(
+            #         EC.presence_of_element_located((By.XPATH, '//div[@class="ns-hmw0n-e-15"]//span[text()="Закрыть"]')))
+            #
+            #     # Кликаем по кнопке "Закрыть"
+            #     close_button.click()
+            #
+            #     # Проверим, что кнопка "Закрыть" действительно исчезла
+            #     # wait.until(EC.staleness_of(close_button))
+            #
+            # except:
+            #     pass  # Если всплывающего окна нет или не удается его закрыть, продолжаем выполнение
 
-                # Кликаем по кнопке "Закрыть"
-                close_button.click()
 
-                # Проверим, что кнопка "Закрыть" действительно исчезла
-                wait.until(EC.staleness_of(close_button))
-
-            except:
-                pass  # Если всплывающего окна нет или не удается его закрыть, продолжаем выполнение
-            # Подождем еще 1 секунды
-            time.sleep(1)
-            # Имитация нажатия клавиши "f12"
-            pyautogui.press('f12')
-
-            # Подождем еще 1 секунды
-            time.sleep(1)
-            # Дождемся загрузки файла
-            try:
-                wait.until(lambda x: any(filename.endswith('.torrent') for filename in os.listdir(download_folder)))
-            except TimeoutException:
-                print("Торрент-файл не загружен.")
-                return None
+            # # Дождемся загрузки файла
+            # try:
+            #     wait.until(lambda x: any(filename.endswith('.torrent') for filename in os.listdir(download_folder)))
+            # except TimeoutException:
+            #     print("Торрент-файл не загружен.")
+            #     return None
 
             # Получаем список файлов после скачивания
             filenames_new = set(os.listdir(download_folder))
@@ -159,14 +185,6 @@ def download_torrent_file(url):
         print(f"Ошибка при скачивании торрент-файла: {e}")
         driver.quit()
         return "Ошибка"
-
-
-
-
-
-
-
-
 
 
 
