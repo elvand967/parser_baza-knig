@@ -2,7 +2,7 @@
 
 '''
 В этом модуле попытаемся повторно загрузить торрент-файлы, что не получилось ранее
-
+1
 
 Готовим *.json к формированию БД.
 
@@ -30,6 +30,8 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import TimeoutException
+
+total_tjrrent = 0
 
 def main():
     # Путь к директории результатов анализа
@@ -99,9 +101,10 @@ def main():
     elapsed_time_formatted = format_time(elapsed_time_pars)
 
     print(f"\nНа обработку {end_index-start_index+1} элементов, всего затрачено время : {elapsed_time_formatted}")
-
+    print(f"Загружено: {end_index-start_index+1} торрент-файлов")
 
 def download_torrent_file(url):
+    global total_tjrrent
     try:
         download_folder = "D:\\User\\Downloads"  # Путь к папке downloads
 
@@ -154,6 +157,7 @@ def download_torrent_file(url):
             # Находим имя нового файла
             downloaded_file = next(iter(filenames_new - filenames_old), None)
             if downloaded_file is not None:
+                total_tjrrent = total_tjrrent+1
                 # Закрываем браузер после скачивания
                 driver.quit()
                 return downloaded_file
